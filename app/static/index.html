@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SHIELD-OS 1.0 // TBM Mission Control</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="wallpaper" aria-hidden="true"></div>
+
+  <div id="desktop" class="desktop">
+    <div class="icon" id="icon-geo" data-open="win-sensor">
+      <svg viewBox="0 0 32 24" width="34" height="26" aria-hidden="true">
+        <rect x="2" y="4" width="28" height="18" rx="1" fill="#ffd966" stroke="#6a0dad" stroke-width="1.5"/>
+        <rect x="2" y="4" width="8" height="3" fill="#ffd966" stroke="#6a0dad" stroke-width="1.5"/>
+        <line x1="8" y1="12" x2="24" y2="12" stroke="#6a0dad" stroke-width="1.5"/>
+        <line x1="8" y1="16" x2="18" y2="16" stroke="#6a0dad" stroke-width="1.5"/>
+      </svg>
+      <span>Geo&nbsp;Data</span>
+    </div>
+    <div class="icon" id="icon-cutter" data-open="win-camera">
+      <svg viewBox="0 0 32 24" width="34" height="26" aria-hidden="true">
+        <rect x="1" y="2" width="12" height="20" rx="1" fill="#c0c0c0" stroke="#008080" stroke-width="1.5"/>
+        <rect x="1" y="2" width="12" height="8" fill="#a0d8ef" stroke="#008080" stroke-width="1.5"/>
+        <rect x="18" y="6" width="13" height="16" rx="1" fill="#ff00ff" stroke="#6a0dad" stroke-width="1.5"/>
+        <rect x="21" y="10" width="7" height="5" fill="#0a0a2a" stroke="#6a0dad" stroke-width="1.5"/>
+        <rect x="2" y="13" width="10" height="4" rx="1" fill="#6a0dad"/>
+      </svg>
+      <span>Cutterhead</span>
+    </div>
+    <div class="icon" id="icon-risk" data-open="win-alerts">
+      <svg viewBox="0 0 32 24" width="34" height="26" aria-hidden="true">
+        <path d="M16 1 L31 22 H1 Z" fill="#ffb3c8" stroke="#6a0dad" stroke-width="1.5"/>
+        <rect x="14.5" y="8" width="3" height="7" fill="#ff00ff" stroke="#6a0dad" stroke-width="0.8"/>
+        <rect x="14.5" y="17" width="3" height="2" fill="#ff00ff" stroke="#6a0dad" stroke-width="0.8"/>
+      </svg>
+      <span>Risk&nbsp;Reports</span>
+    </div>
+    <div class="icon" id="icon-settle" data-open="win-settlement">
+      <svg viewBox="0 0 32 24" width="34" height="26" aria-hidden="true">
+        <rect x="2" y="4" width="28" height="18" rx="1" fill="#b8f4e0" stroke="#008080" stroke-width="1.5"/>
+        <polyline points="5,18 11,14 16,16 22,9 28,10" fill="none" stroke="#ff00ff" stroke-width="1.5"/>
+        <polyline points="5,18 12,16 17,17 23,12 28,13" fill="none" stroke="#ffff00" stroke-width="1.5"/>
+      </svg>
+      <span>Settlement</span>
+    </div>
+  </div>
+
+  <div id="win-sensor" class="window" style="left:24px;top:70px;">
+    <div class="titlebar" data-drag="win-sensor">
+      <span class="titlebar-menu">&#9632;</span>
+      <span class="titlebar-text">SENSOR.EXE - Real-Time Cutterhead Metrics</span>
+      <span class="titlebar-btns">
+        <button class="tbtn tbtn-min" data-min="win-sensor" title="Minimize">_</button>
+        <button class="tbtn tbtn-max" data-max="win-sensor" title="Maximize">&#9645;</button>
+        <button class="tbtn tbtn-close" data-close="win-sensor" title="Close">X</button>
+      </span>
+    </div>
+    <div class="window-body">
+      <div class="eq" id="equalizer"></div>
+      <div class="eq-footer">
+        <span id="eq-station">STATION: ----</span>
+        <span id="eq-ring">RING: ----</span>
+        <span class="led" id="eq-led">LIVE</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="win-camera" class="window" style="left:420px;top:150px;">
+    <div class="titlebar" data-drag="win-camera">
+      <span class="titlebar-menu">&#9632;</span>
+      <span class="titlebar-text">CAMERA.EXE - CCTV: Tunnel Face</span>
+      <span class="titlebar-btns">
+        <button class="tbtn tbtn-min" data-min="win-camera" title="Minimize">_</button>
+        <button class="tbtn tbtn-max" data-max="win-camera" title="Maximize">&#9645;</button>
+        <button class="tbtn tbtn-close" data-close="win-camera" title="Close">X</button>
+      </span>
+    </div>
+    <div class="window-body">
+      <div class="crt" id="crt">
+        <div class="crt-badge crt-live">&#9679; LIVE</div>
+        <div class="crt-badge crt-rec">&#9678; REC</div>
+        <div class="crt-ts" id="crt-ts">00:00:00</div>
+        <div class="crt-label">TUNNEL FACE CAM 01 &mdash; KM 12+080</div>
+        <svg class="crt-scene" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect x="0" y="0" width="320" height="200" fill="#050510"/>
+          <path d="M0 200 L0 120 Q160 20 320 120 L320 200 Z" fill="#12122a"/>
+          <path d="M0 200 L0 135 Q160 45 320 135 L320 200 Z" fill="#1c1c3a"/>
+          <ellipse cx="160" cy="80" rx="60" ry="46" fill="#0a0a18" stroke="#6a0dad" stroke-width="3"/>
+          <ellipse cx="160" cy="80" rx="44" ry="32" fill="#08080f" stroke="#a300a3" stroke-width="2"/>
+          <circle cx="160" cy="80" r="18" fill="#ff00ff" opacity="0.25"/>
+          <line x1="60" y1="200" x2="60" y2="150" stroke="#008080" stroke-width="3"/>
+          <line x1="260" y1="200" x2="260" y2="150" stroke="#008080" stroke-width="3"/>
+          <line x1="60" y1="155" x2="260" y2="155" stroke="#008080" stroke-width="2"/>
+          <line x1="60" y1="162" x2="260" y2="162" stroke="#008080" stroke-width="2"/>
+          <rect x="0" y="0" width="320" height="200" fill="#ff00ff" opacity="0.04"/>
+        </svg>
+        <div class="crt-scanlines" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="win-alerts" class="window" style="left:810px;top:60px;">
+    <div class="titlebar" data-drag="win-alerts">
+      <span class="titlebar-menu">&#9632;</span>
+      <span class="titlebar-text">ALERTS.LOG - Active Risk Sources</span>
+      <span class="titlebar-btns">
+        <button class="tbtn tbtn-min" data-min="win-alerts" title="Minimize">_</button>
+        <button class="tbtn tbtn-max" data-max="win-alerts" title="Maximize">&#9645;</button>
+        <button class="tbtn tbtn-close" data-close="win-alerts" title="Close">X</button>
+      </span>
+    </div>
+    <div class="window-body">
+      <div class="alert-legend">
+        <span class="lg lg-green">SAFE</span>
+        <span class="lg lg-orange">NOTICE</span>
+        <span class="lg lg-yellow">WARN</span>
+        <span class="lg lg-red">CRITICAL</span>
+      </div>
+      <div class="alert-list" id="alert-list"></div>
+      <div class="eq-footer"><span id="alert-count">SOURCES: 0</span></div>
+    </div>
+  </div>
+
+  <div id="win-controls" class="window" style="left:24px;top:360px;">
+    <div class="titlebar" data-drag="win-controls">
+      <span class="titlebar-menu">&#9632;</span>
+      <span class="titlebar-text">ADVANCE.CTL - Parameter Controls</span>
+      <span class="titlebar-btns">
+        <button class="tbtn tbtn-min" data-min="win-controls" title="Minimize">_</button>
+        <button class="tbtn tbtn-max" data-max="win-controls" title="Maximize">&#9645;</button>
+        <button class="tbtn tbtn-close" data-close="win-controls" title="Close">X</button>
+      </span>
+    </div>
+    <div class="window-body">
+      <div class="ctl-row">
+        <span class="ctl-label">ADVANCE RATE (mm/min)</span>
+        <input type="range" id="slider-rate" min="0" max="80" value="42" />
+        <span class="ctl-value" id="val-rate">42</span>
+      </div>
+      <div class="ctl-row">
+        <span class="ctl-label">THRUST SETPOINT (kN)</span>
+        <input type="range" id="slider-thrust" min="0" max="20000" step="100" value="12500" />
+        <span class="ctl-value" id="val-thrust">12500</span>
+      </div>
+      <div class="ctl-row">
+        <span class="ctl-label">TORQUE LIMIT (kNm)</span>
+        <input type="range" id="slider-torque" min="0" max="6000" step="50" value="3800" />
+        <span class="ctl-value" id="val-torque">3800</span>
+      </div>
+      <div class="ctl-row ctl-buttons">
+        <button class="btn chunky" id="btn-prev" title="Previous ring">&#9198;</button>
+        <button class="btn chunky btn-play" id="btn-play" title="Play / Pause">&#9658;</button>
+        <button class="btn chunky" id="btn-next" title="Next ring">&#9197;</button>
+        <button class="btn chunky btn-apply" id="btn-apply" title="Apply settings to model">APPLY</button>
+      </div>
+      <div class="ctl-row">
+        <label class="switch">
+          <input type="checkbox" id="chk-alarm" checked />
+          <span class="switch-label">ALARM SYSTEM</span>
+        </label>
+        <span class="ctl-value" id="alarm-state">ON</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="win-settlement" class="window" style="left:420px;top:360px;">
+    <div class="titlebar" data-drag="win-settlement">
+      <span class="titlebar-menu">&#9632;</span>
+      <span class="titlebar-text">SETTLEMENT.PLT - Predicted vs Monitored</span>
+      <span class="titlebar-btns">
+        <button class="tbtn tbtn-min" data-min="win-settlement" title="Minimize">_</button>
+        <button class="tbtn tbtn-max" data-max="win-settlement" title="Maximize">&#9645;</button>
+        <button class="tbtn tbtn-close" data-close="win-settlement" title="Close">X</button>
+      </span>
+    </div>
+    <div class="window-body">
+      <canvas id="settle-canvas" width="470" height="240"></canvas>
+      <div class="plot-legend">
+        <span class="lg lg-pink">PREDICTED</span>
+        <span class="lg lg-yellow">MONITORED</span>
+        <span class="lg lg-teal">CONSOLIDATION</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-area" class="toast-area"></div>
+
+  <div id="ctx-menu" class="ctx-menu" hidden>
+    <div class="ctx-item" data-action="export">Export Data...</div>
+    <div class="ctx-item" data-action="calibrate">Calibrate Sensors...</div>
+    <div class="ctx-item" data-action="thresholds">Set Alert Thresholds...</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" data-action="refresh">Refresh Feed</div>
+  </div>
+
+  <div id="search-results" class="window search-win" hidden>
+    <div class="titlebar">
+      <span class="titlebar-menu">&#9632;</span>
+      <span class="titlebar-text">SEARCH.EXE - Query Results</span>
+      <span class="titlebar-btns">
+        <button class="tbtn tbtn-close" data-close="search-results" title="Close">X</button>
+      </span>
+    </div>
+    <div class="window-body">
+      <div class="alert-list" id="search-results-list"></div>
+    </div>
+  </div>
+
+  <footer class="taskbar">
+    <button class="start-btn" id="btn-start">&#9632; SHIELD-OS</button>
+    <div class="taskbar-tasks" id="taskbar-tasks"></div>
+    <div class="taskbar-right">
+      <span id="sys-msg">SYS: READY</span>
+      <span id="clock">00:00:00</span>
+    </div>
+  </footer>
+
+  <div id="searchdock" class="searchdock">
+    <input id="search-input" type="text" placeholder="SEARCH DATABASE... e.g. ring 12 / 102.4 / thrust" autocomplete="off" />
+    <button id="search-btn">FIND</button>
+  </div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
