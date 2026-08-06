@@ -2,7 +2,7 @@ services:
   - type: web
     name: tunneling-platform
     runtime: docker
-    repo: https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO
+    repo: https://github.com/surjithraj7/SHEILD_INTELLEGENCE_TUNNELING_MANAGEMENT_.git
     plan: starter
     dockerContext: .
     dockerfilePath: ./Dockerfile
