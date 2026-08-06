@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import socket
 from typing import Any
+from urllib.parse import urlparse
 
 logger = logging.getLogger("assistant.gpt")
 
@@ -109,6 +111,20 @@ def is_configured() -> bool:
     return bool(os.environ.get("OPENAI_API_KEY", "").strip())
 
 
+def _relay_alive(timeout: float = 0.4) -> bool:
+    base = (os.environ.get("OPENAI_BASE_URL") or "").strip()
+    if not base:
+        return True
+    try:
+        parsed = urlparse(base)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
 def _build_system_context(db: Session) -> str:
     status = analysis = ""
     try:
@@ -181,13 +197,17 @@ def _consume_stream(stream) -> tuple[str, dict]:
 def respond_gpt(history: list[dict], db: Session) -> dict | None:
     if not is_configured():
         return None
+    if not _relay_alive():
+        logger.info("GPT relay unreachable at %s - falling back", os.environ.get("OPENAI_BASE_URL", "default"))
+        return None
     try:
         from openai import OpenAI
 
         client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY", "").strip(),
             base_url=os.environ.get("OPENAI_BASE_URL") or None,
-            timeout=90.0,
+            timeout=10.0,
+            max_retries=0,
         )
         model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
 

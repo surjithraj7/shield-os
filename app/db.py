@@ -8,6 +8,12 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATABASE_URL = os.environ.get("TUNNEL_DB_URL", f"sqlite:///{os.path.join(BASE_DIR, 'tunneling.db')}")
 
+if DATABASE_URL.startswith("sqlite:///"):
+    _db_path = DATABASE_URL.replace("sqlite:///", "")
+    _db_dir = os.path.dirname(_db_path)
+    if _db_dir:
+        os.makedirs(_db_dir, exist_ok=True)
+
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
