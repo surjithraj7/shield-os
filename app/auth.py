@@ -95,6 +95,12 @@ def seed_users(db: Session) -> None:
                 full_name="System Administrator",
             ),
             User(
+                username="surjith",
+                password_hash=hash_password("surjith777"),
+                role="admin",
+                full_name="System Administrator",
+            ),
+            User(
                 username="operator",
                 password_hash=hash_password("shield123"),
                 role="operator",
