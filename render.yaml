@@ -3,7 +3,7 @@ services:
     name: tunneling-platform
     runtime: docker
     repo: https://github.com/surjithraj7/SHEILD_INTELLEGENCE_TUNNELING_MANAGEMENT_.git
-    plan: starter
+    plan: free
     dockerContext: .
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health

@@ -79,33 +79,19 @@ app.include_router(ringeye_router)
 app.include_router(xray_router)
 
 
+@app.get("/api/health")
+def health():
+    return {"status": "ok", "engine": "ready"}
+
+
 @app.get("/api/info")
 def info():
     return {
         "name": "Intelligent Tunneling Management Platform",
         "engine": "Mindlin + Hankel-transform consolidation",
         "docs": "/docs",
-        "endpoints": [
-            "POST /api/engine/immediate",
-            "POST /api/engine/consolidation",
-            "POST /api/engine/total",
-            "POST /api/engine/evaluate",
-            "GET /api/engine/reference/beijing-line12",
-            "POST /api/engine/calibrate",
-            "GET|POST /api/data/shield-params",
-            "GET|POST /api/data/monitoring",
-            "GET /api/data/calculated",
-            "POST /api/grout/hydration|impact",
-            "GET|POST /api/autodrive/advisory",
-            "POST /api/ringeye/scan|analyze",
-            "POST /api/xray/map",
-        ],
     }
 
 
-@app.get("/api/health")
-def health():
-    return {"status": "ok", "engine": "ready"}
-
-
-app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
+if os.path.isdir(STATIC_DIR):
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
