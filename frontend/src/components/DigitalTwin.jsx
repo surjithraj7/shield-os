@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { ENDPOINTS, getJSON } from "../api";
+import { ENDPOINTS, getJSON, twinWS } from "../api";
+import {
+  MuckFlowEffect,
+  GroutEffect,
+  DustCloudEffect,
+  WaterSeepageEffect,
+  ParticleEffectsManager,
+} from "../effects/ParticleEffects";
 
 const RING_LEN = 1.6;
 const RING_RADIUS = 3.2;
@@ -227,6 +234,7 @@ export default function DigitalTwin({ onToast }) {
   const sceneRef = useRef(null);
   const twinRef = useRef(null);
   const overlayRef = useRef(null);
+  const particlesRef = useRef(null);
 
   useEffect(() => {
     const holder = holderRef.current;
@@ -276,7 +284,17 @@ export default function DigitalTwin({ onToast }) {
     axes.position.set(-RING_RADIUS - 3, 0, 6);
     scene.add(axes);
 
+    // FORGE3D Innovation #4: Particle Effects
+    const particleManager = new ParticleEffectsManager(scene);
+    particleManager.addEffect("muck", MuckFlowEffect);
+    particleManager.addEffect("grout", GroutEffect, {
+      position: new THREE.Vector3(0, 0, 3.5),
+    });
+    particleManager.addEffect("dust", DustCloudEffect);
+    particlesRef.current = particleManager;
+
     const twinGroup = new THREE.Group();
+    twinGroup.name = "twin-group";
     scene.add(twinGroup);
     twinRef.current = twinGroup;
 
@@ -290,9 +308,15 @@ export default function DigitalTwin({ onToast }) {
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
-      const hits = raycaster.intersectObjects(twinGroup.children, false);
-      if (hits.length && hits[0].object.name && hits[0].object.name.startsWith("R")) {
-        hoverName = hits[0].object.name;
+      const currentTwin = twinRef.current;
+      if (currentTwin) {
+        const hits = raycaster.intersectObjects(currentTwin.children, true);
+        const ringHit = hits.find((h) => h.object && h.object.name && h.object.name.startsWith("R"));
+        if (ringHit) {
+          hoverName = ringHit.object.name;
+        } else {
+          hoverName = null;
+        }
       } else {
         hoverName = null;
       }
@@ -303,6 +327,7 @@ export default function DigitalTwin({ onToast }) {
     const clock = new THREE.Clock();
     function animate() {
       raf = requestAnimationFrame(animate);
+      const dt = clock.getDelta();
       const t = clock.getElapsedTime();
       const group = twinRef.current;
       if (group) {
@@ -310,6 +335,10 @@ export default function DigitalTwin({ onToast }) {
         if (cutter) cutter.rotation.z = t * 0.6;
         const beacon = group.children.find((c) => c.type === "Mesh" && c.geometry.type === "SphereGeometry");
         if (beacon) beacon.position.y = RING_RADIUS + 1.2 + Math.sin(t * 2) * 0.4;
+      }
+      // Update particle effects
+      if (particlesRef.current) {
+        particlesRef.current.update(dt);
       }
       controls.update();
       renderer.render(scene, camera);
@@ -330,6 +359,7 @@ export default function DigitalTwin({ onToast }) {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
       renderer.domElement.removeEventListener("pointermove", onPick);
+      if (particlesRef.current) particlesRef.current.dispose();
       controls.dispose();
       mount.removeChild(renderer.domElement);
       renderer.dispose();
@@ -338,33 +368,70 @@ export default function DigitalTwin({ onToast }) {
 
   useEffect(() => {
     let cancelled = false;
-    async function tick() {
+
+    function updateTwinScene(data) {
+      const scene = sceneRef.current;
+      if (!scene) return;
+      const old = scene.getObjectByName("twin-group");
+      if (old) {
+        scene.remove(old);
+        old.traverse((child) => {
+          if (child.isMesh) {
+            child.geometry?.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach((m) => m.dispose());
+            } else if (child.material) {
+              child.material.dispose();
+            }
+          }
+        });
+      }
+      const group = buildTwinGroup(data);
+      group.name = "twin-group";
+      scene.add(group);
+      twinRef.current = group;
+    }
+
+    // Fetch initial REST snapshot immediately for instant UI render
+    getJSON(ENDPOINTS.twinSnapshot)
+      .then((snap) => {
+        if (cancelled || !snap) return;
+        setSnapshot(snap);
+        setLink(`LINK: SYNC (R${snap.current_ring} @ ${Number(snap.chainage_m).toFixed(1)}m)`);
+        updateTwinScene(snap);
+      })
+      .catch(() => {
+        if (!cancelled) setLink("LINK: SYNCING...");
+      });
+
+    // WebSocket live stream for digital twin - FORGE3D Innovation #1
+    twinWS.connect();
+
+    const unsub = twinWS.on("twin_update", (data) => {
+      if (cancelled) return;
+      setSnapshot(data);
+      setLink(`LINK: LIVE (R${data.current_ring} @ ${Number(data.chainage_m).toFixed(1)}m)`);
+      updateTwinScene(data);
+    });
+
+    // Fallback to polling if WebSocket fails
+    const fallbackPoll = setInterval(async () => {
+      if (twinWS.connected) return;
       try {
         const snap = await getJSON(ENDPOINTS.twinSnapshot);
         if (cancelled) return;
         setSnapshot(snap);
-        setLink(`LINK: SYNC (R${snap.current_ring} @ ${Number(snap.chainage_m).toFixed(1)}m)`);
-        const scene = sceneRef.current;
-        if (scene) {
-          const old = scene.getObjectByName("twin-group");
-          if (old) {
-            scene.remove(old);
-            twinRef.current = null;
-          }
-          const group = buildTwinGroup(snap);
-          group.name = "twin-group";
-          scene.add(group);
-          twinRef.current = group;
-        }
+        setLink(`LINK: POLL (R${snap.current_ring} @ ${Number(snap.chainage_m).toFixed(1)}m)`);
+        updateTwinScene(snap);
       } catch (e) {
         if (!cancelled) setLink("LINK: OFFLINE - STATIC MODEL");
       }
-    }
-    tick();
-    const id = setInterval(tick, 6000);
+    }, 6000);
+
     return () => {
       cancelled = true;
-      clearInterval(id);
+      unsub();
+      clearInterval(fallbackPoll);
     };
   }, [onToast]);
 

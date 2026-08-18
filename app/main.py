@@ -21,6 +21,11 @@ from app.api.shm_routes import router as shm_router
 from app.api.spatial_routes import router as spatial_router
 from app.api.twin_routes import router as twin_router
 from app.api.xray_routes import router as xray_router
+from app.api.websocket_routes import router as ws_router
+from app.api.geology_routes import router as geology_router
+from app.api.cutter_routes import router as cutter_router
+from app.api.gis_routes import router as gis_router
+from app.api.pdf_routes import router as pdf_router
 from app.auth import seed_users
 from app.db import SessionLocal, init_db
 from app.seed_advanced import seed_advanced
@@ -77,6 +82,11 @@ app.include_router(grout_router)
 app.include_router(autodrive_router)
 app.include_router(ringeye_router)
 app.include_router(xray_router)
+app.include_router(ws_router)
+app.include_router(geology_router)
+app.include_router(cutter_router)
+app.include_router(gis_router)
+app.include_router(pdf_router)
 
 
 @app.get("/api/health")

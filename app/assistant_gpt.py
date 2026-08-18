@@ -108,15 +108,19 @@ TOOLS = [
 
 
 def is_configured() -> bool:
-    return bool(os.environ.get("OPENAI_API_KEY", "").strip())
+    return bool(
+        os.environ.get("OPENAI_API_KEY", "").strip()
+        or os.environ.get("OPENROUTER_API_KEY", "").strip()
+    )
 
 
-def _relay_alive(timeout: float = 0.4) -> bool:
-    base = (os.environ.get("OPENAI_BASE_URL") or "").strip()
-    if not base:
+def _relay_alive(base_url: str = "", timeout: float = 2.0) -> bool:
+    if not base_url:
+        base_url = (os.environ.get("OPENAI_BASE_URL") or "").strip()
+    if not base_url:
         return True
     try:
-        parsed = urlparse(base)
+        parsed = urlparse(base_url)
         host = parsed.hostname or "127.0.0.1"
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
         with socket.create_connection((host, port), timeout=timeout):
@@ -197,19 +201,36 @@ def _consume_stream(stream) -> tuple[str, dict]:
 def respond_gpt(history: list[dict], db: Session) -> dict | None:
     if not is_configured():
         return None
-    if not _relay_alive():
-        logger.info("GPT relay unreachable at %s - falling back", os.environ.get("OPENAI_BASE_URL", "default"))
+
+    api_key = (
+        os.environ.get("OPENAI_API_KEY", "").strip()
+        or os.environ.get("OPENROUTER_API_KEY", "").strip()
+    )
+    base_url = (os.environ.get("OPENAI_BASE_URL") or "").strip()
+    if not base_url and api_key.startswith("sk-or-v1-"):
+        base_url = "https://openrouter.ai/api/v1"
+
+    if not _relay_alive(base_url):
+        logger.info("GPT relay unreachable at %s - falling back", base_url or "default")
         return None
     try:
         from openai import OpenAI
 
+        headers = {}
+        if "openrouter.ai" in base_url:
+            headers = {
+                "HTTP-Referer": "https://shield-os.local",
+                "X-OpenRouter-Title": "SHIELD-OS Tunneling Platform",
+            }
+
         client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY", "").strip(),
-            base_url=os.environ.get("OPENAI_BASE_URL") or None,
-            timeout=10.0,
-            max_retries=0,
+            api_key=api_key,
+            base_url=base_url or None,
+            timeout=30.0,
+            max_retries=1,
+            default_headers=headers if headers else None,
         )
-        model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
+        model = os.environ.get("OPENAI_MODEL", "openrouter/free").strip() or "openrouter/free"
 
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT + _build_system_context(db)}
@@ -220,14 +241,24 @@ def respond_gpt(history: list[dict], db: Session) -> dict | None:
 
         actions: list[dict] = []
         for _ in range(3):
-            stream = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                tools=TOOLS,
-                tool_choice="auto",
-                temperature=0.4,
-                stream=True,
-            )
+            try:
+                stream = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=TOOLS,
+                    tool_choice="auto",
+                    temperature=0.4,
+                    stream=True,
+                )
+            except Exception as tool_exc:
+                logger.warning("Tool completion failed (%s), falling back to standard completion", tool_exc)
+                stream = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0.4,
+                    stream=True,
+                )
+
             content, tool_calls = _consume_stream(stream)
             if not tool_calls:
                 reply = (content or "").strip()

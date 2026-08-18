@@ -23,6 +23,12 @@ import Autodrive from "./components/Autodrive";
 import GroutSim from "./components/GroutSim";
 import XrayMap from "./components/XrayMap";
 import RingEye from "./components/RingEye";
+import GeologyView from "./components/GeologyView";
+import CutterWear from "./components/CutterWear";
+import GisView from "./components/GisView";
+import Annotations from "./components/Annotations";
+import AROverlay from "./components/AROverlay";
+import VoiceCommand from "./components/VoiceCommand";
 
 const INITIAL_WINDOWS = [
   { id: "win-sensor", title: "SENSOR.EXE - Real-Time Cutterhead Metrics", x: 24, y: 60 },
@@ -42,6 +48,11 @@ const INITIAL_WINDOWS = [
   { id: "win-grout", title: "GROUT-SIM.EXE - Hydro-Thermal Grout Hardening", x: 80, y: 140 },
   { id: "win-xray", title: "X-RAY.EXE - Spatial Strain Map", x: 100, y: 160 },
   { id: "win-ringeye", title: "RING-EYE.EXE - Optical Ring Deformation", x: 120, y: 180 },
+  { id: "win-geology", title: "GEOLOGY.EXE - 3D Geological Stratigraphy", x: 200, y: 100 },
+  { id: "win-cutter", title: "CUTTER.AI - Predictive Cutter Wear Intelligence", x: 220, y: 120 },
+  { id: "win-gis", title: "GIS.MAP - Tunnel Alignment & Coordinates", x: 240, y: 140 },
+  { id: "win-ar", title: "AR.EXE - Augmented Reality Field Inspection", x: 260, y: 160 },
+  { id: "win-voice", title: "VOICE.EXE - Voice Command Interface", x: 280, y: 180 },
   { id: "search-results", title: "SEARCH.EXE - Query Results", x: 300, y: 160 }
 ];
 
@@ -61,7 +72,12 @@ const ICONS = [
   { id: "icon-autodrive", open: "win-autodrive", label: "Autodrive" },
   { id: "icon-grout", open: "win-grout", label: "Grout-Sim" },
   { id: "icon-xray", open: "win-xray", label: "X-Ray" },
-  { id: "icon-ringeye", open: "win-ringeye", label: "Ring-Eye" }
+  { id: "icon-ringeye", open: "win-ringeye", label: "Ring-Eye" },
+  { id: "icon-geology", open: "win-geology", label: "Geology" },
+  { id: "icon-cutter", open: "win-cutter", label: "Cutter AI" },
+  { id: "icon-gis", open: "win-gis", label: "GIS Map" },
+  { id: "icon-ar", open: "win-ar", label: "AR View" },
+  { id: "icon-voice", open: "win-voice", label: "Voice" }
 ];
 
 const RISK_SOURCES = [
@@ -436,6 +452,62 @@ export default function App() {
                 <circle cx="16" cy="12" r="1.4" fill="#ff00ff" />
               </svg>
             )}
+            {ic.label === "Geology" && (
+              <svg viewBox="0 0 32 24" width="34" height="26">
+                <rect x="2" y="2" width="28" height="20" rx="1" fill="#3a2a1a" stroke="#8B6914" strokeWidth="1.5" />
+                <rect x="2" y="2" width="28" height="4" fill="#C4A97D" />
+                <rect x="2" y="6" width="28" height="5" fill="#8B6914" />
+                <rect x="2" y="11" width="28" height="5" fill="#CD853F" />
+                <rect x="2" y="16" width="28" height="6" fill="#DEB887" />
+                <line x1="16" y1="2" x2="16" y2="22" stroke="#00ffff" strokeWidth="1.5" strokeDasharray="2 2" />
+                <circle cx="16" cy="12" r="3" fill="none" stroke="#ff00ff" strokeWidth="1.5" />
+              </svg>
+            )}
+            {ic.label === "Cutter AI" && (
+              <svg viewBox="0 0 32 24" width="34" height="26">
+                <circle cx="16" cy="12" r="10" fill="#101020" stroke="#ff00ff" strokeWidth="1.5" />
+                <circle cx="16" cy="12" r="3" fill="#666" stroke="#00ffff" strokeWidth="1" />
+                <line x1="16" y1="2" x2="16" y2="5" stroke="#00cc66" strokeWidth="2" />
+                <line x1="16" y1="19" x2="16" y2="22" stroke="#00cc66" strokeWidth="2" />
+                <line x1="6" y1="12" x2="9" y2="12" stroke="#ffaa00" strokeWidth="2" />
+                <line x1="23" y1="12" x2="26" y2="12" stroke="#ff4444" strokeWidth="2" />
+                <circle cx="16" cy="2" r="1.5" fill="#00cc66" />
+                <circle cx="16" cy="22" r="1.5" fill="#00cc66" />
+                <circle cx="6" cy="12" r="1.5" fill="#ffaa00" />
+                <circle cx="26" cy="12" r="1.5" fill="#ff4444" />
+              </svg>
+            )}
+            {ic.label === "GIS Map" && (
+              <svg viewBox="0 0 32 24" width="34" height="26">
+                <rect x="2" y="2" width="28" height="20" rx="1" fill="#0a1628" stroke="#ff00ff" strokeWidth="1.5" />
+                <polyline points="6,18 10,14 16,15 22,8 26,10" fill="none" stroke="#ff00ff" strokeWidth="2" />
+                <circle cx="16" cy="12" r="2" fill="#00ffff" />
+                <line x1="26" y1="4" x2="26" y2="10" stroke="#00ffff" strokeWidth="1.5" />
+                <line x1="23" y1="7" x2="29" y2="7" stroke="#00ffff" strokeWidth="1.5" />
+                <text x="24" y="6" fontSize="5" fill="#00ffff" fontFamily="Courier New">N</text>
+              </svg>
+            )}
+            {ic.label === "AR View" && (
+              <svg viewBox="0 0 32 24" width="34" height="26">
+                <rect x="2" y="2" width="28" height="20" rx="2" fill="#101020" stroke="#00ffff" strokeWidth="1.5" />
+                <circle cx="16" cy="12" r="6" fill="none" stroke="#ff00ff" strokeWidth="1.5" />
+                <line x1="16" y1="4" x2="16" y2="8" stroke="#00ffff" strokeWidth="1.5" />
+                <line x1="16" y1="16" x2="16" y2="20" stroke="#00ffff" strokeWidth="1.5" />
+                <line x1="8" y1="12" x2="12" y2="12" stroke="#00ffff" strokeWidth="1.5" />
+                <line x1="20" y1="12" x2="24" y2="12" stroke="#00ffff" strokeWidth="1.5" />
+                <circle cx="16" cy="12" r="1.5" fill="#ff00ff" />
+              </svg>
+            )}
+            {ic.label === "Voice" && (
+              <svg viewBox="0 0 32 24" width="34" height="26">
+                <rect x="2" y="2" width="28" height="20" rx="1" fill="#101020" stroke="#00cc66" strokeWidth="1.5" />
+                <rect x="13" y="6" width="6" height="10" rx="3" fill="#00cc66" />
+                <path d="M10 14 Q10 20 16 20 Q22 20 22 14" fill="none" stroke="#00cc66" strokeWidth="1.5" />
+                <line x1="16" y1="20" x2="16" y2="22" stroke="#00cc66" strokeWidth="1.5" />
+                <circle cx="8" cy="10" r="1" fill="#ff00ff" />
+                <circle cx="24" cy="10" r="1" fill="#ff00ff" />
+              </svg>
+            )}
             <span>{ic.label}</span>
           </button>
         ))}
@@ -484,6 +556,22 @@ export default function App() {
           {w.id === "win-grout" && <GroutSim onToast={toast} />}
           {w.id === "win-xray" && <XrayMap onToast={toast} />}
           {w.id === "win-ringeye" && <RingEye onToast={toast} />}
+          {w.id === "win-geology" && <GeologyView onToast={toast} />}
+          {w.id === "win-cutter" && <CutterWear onToast={toast} />}
+          {w.id === "win-gis" && <GisView onToast={toast} />}
+          {w.id === "win-ar" && <AROverlay onToast={toast} />}
+          {w.id === "win-voice" && (
+            <VoiceCommand
+              onNavigate={(id) => {
+                openWin(id);
+                focus(id);
+              }}
+              onQuery={(endpoint) => {
+                toast(`QUERYING: ${endpoint}`, "ok");
+              }}
+              onToast={toast}
+            />
+          )}
           {w.id === "search-results" && (
             <div className="alert-list">
               {!searchResults && <div className="alert-row sev-notice"><span className="alert-desc">TYPE A QUERY AND PRESS FIND</span></div>}

@@ -36,7 +36,7 @@ Write-Host "[deploy] launching uvicorn on $HostAddr`:$Port" -ForegroundColor Cya
 Write-Host "[deploy] logs: $Out / $Err" -ForegroundColor Cyan
 
 $proc = Start-Process -FilePath "python" -ArgumentList @(
-    "-m", "uvicorn", "app.main:app",
+    "-u", "-m", "uvicorn", "app.main:app",
     "--host", $HostAddr,
     "--port", $Port
 ) -WorkingDirectory $RepoRoot -RedirectStandardOutput $Out -RedirectStandardError $Err -PassThru -WindowStyle Hidden
