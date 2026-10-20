@@ -29,31 +29,35 @@ import GisView from "./components/GisView";
 import Annotations from "./components/Annotations";
 import AROverlay from "./components/AROverlay";
 import VoiceCommand from "./components/VoiceCommand";
+import CityTunnelCrossSection from "./components/CityTunnelCrossSection";
+import TbmExplorer from "./components/TbmExplorer";
 
 const INITIAL_WINDOWS = [
-  { id: "win-sensor", title: "SENSOR.EXE - Real-Time Cutterhead Metrics", x: 24, y: 60 },
-  { id: "win-camera", title: "CAMERA.EXE - CCTV: Tunnel Face (AR)", x: 500, y: 130 },
-  { id: "win-alerts", title: "ALERTS.LOG - Active Risk Sources", x: 960, y: 60 },
-  { id: "win-controls", title: "ADVANCE.CTL - Parameter Controls", x: 24, y: 340 },
-  { id: "win-settlement", title: "SETTLEMENT.PLT - Predicted vs Monitored", x: 500, y: 340 },
-  { id: "win-twin", title: "TWIN.EXE - Digital Cyber Twin 3D", x: 60, y: 120 },
-  { id: "win-dashboard", title: "TBM-DASH.EXE - Real-Time TBM Monitoring Dashboard", x: 240, y: 70 },
-  { id: "win-shm", title: "SHM.EXE - Structural Health Monitor", x: 60, y: 120 },
-  { id: "win-anomaly", title: "ANOMALY.AI - ML Anomaly Engine", x: 80, y: 140 },
-  { id: "win-transfer", title: "TRANSFER.AI - A/B/C Experience Transfer", x: 100, y: 160 },
-  { id: "win-spatial", title: "SPATIAL.PLN - 3D Clearance Planner", x: 120, y: 180 },
-  { id: "win-report", title: "REPORT.EXE - Auto-Regulatory Reporting", x: 140, y: 200 },
-  { id: "win-ai", title: "AI-ASSIST.EXE - TunnelArchitect-AI Chat", x: 420, y: 140 },
-  { id: "win-autodrive", title: "AUTODRIVE.AI - Closed-Loop Predict-Then-Control", x: 60, y: 120 },
-  { id: "win-grout", title: "GROUT-SIM.EXE - Hydro-Thermal Grout Hardening", x: 80, y: 140 },
-  { id: "win-xray", title: "X-RAY.EXE - Spatial Strain Map", x: 100, y: 160 },
-  { id: "win-ringeye", title: "RING-EYE.EXE - Optical Ring Deformation", x: 120, y: 180 },
-  { id: "win-geology", title: "GEOLOGY.EXE - 3D Geological Stratigraphy", x: 200, y: 100 },
-  { id: "win-cutter", title: "CUTTER.AI - Predictive Cutter Wear Intelligence", x: 220, y: 120 },
-  { id: "win-gis", title: "GIS.MAP - Tunnel Alignment & Coordinates", x: 240, y: 140 },
-  { id: "win-ar", title: "AR.EXE - Augmented Reality Field Inspection", x: 260, y: 160 },
-  { id: "win-voice", title: "VOICE.EXE - Voice Command Interface", x: 280, y: 180 },
-  { id: "search-results", title: "SEARCH.EXE - Query Results", x: 300, y: 160 }
+  { id: "win-sensor", title: "SENSOR // Real-Time Cutterhead Metrics", x: 24, y: 60 },
+  { id: "win-camera", title: "CAMERA // CCTV: Tunnel Face (AR)", x: 500, y: 130 },
+  { id: "win-alerts", title: "ALERTS // Active Risk Sources", x: 960, y: 60 },
+  { id: "win-controls", title: "CONTROLS // Parameter Controls", x: 24, y: 340 },
+  { id: "win-settlement", title: "SETTLEMENT // Predicted vs Monitored", x: 500, y: 340 },
+  { id: "win-twin", title: "TWIN // Digital Cyber Twin 3D", x: 60, y: 120 },
+  { id: "win-dashboard", title: "DASHBOARD // Real-Time TBM Monitoring", x: 240, y: 70 },
+  { id: "win-shm", title: "SHM // Structural Health Monitor", x: 60, y: 120 },
+  { id: "win-anomaly", title: "ANOMALY // ML Anomaly Engine", x: 80, y: 140 },
+  { id: "win-transfer", title: "TRANSFER // A/B/C Experience Transfer", x: 100, y: 160 },
+  { id: "win-spatial", title: "SPATIAL // 3D Clearance Planner", x: 120, y: 180 },
+  { id: "win-report", title: "REPORT // Auto-Regulatory Reporting", x: 140, y: 200 },
+  { id: "win-ai", title: "AI-ASSIST // TunnelArchitect Chat", x: 420, y: 140 },
+  { id: "win-autodrive", title: "AUTODRIVE // Predict-Then-Control", x: 60, y: 120 },
+  { id: "win-grout", title: "GROUT-SIM // Hydro-Thermal Grout", x: 80, y: 140 },
+  { id: "win-xray", title: "X-RAY // Spatial Strain Map", x: 100, y: 160 },
+  { id: "win-ringeye", title: "RING-EYE // Optical Ring Deformation", x: 120, y: 180 },
+  { id: "win-geology", title: "GEOLOGY // 3D Geological Stratigraphy", x: 200, y: 100 },
+  { id: "win-cutter", title: "CUTTER // Predictive Wear Intelligence", x: 220, y: 120 },
+  { id: "win-gis", title: "GIS // Tunnel Alignment & Coordinates", x: 240, y: 140 },
+  { id: "win-ar", title: "AR // Augmented Reality Inspection", x: 260, y: 160 },
+  { id: "win-voice", title: "VOICE // Voice Command Interface", x: 280, y: 180 },
+  { id: "search-results", title: "SEARCH // Query Results", x: 300, y: 160 },
+  { id: "win-citytunnel", title: "CITY-TWIN // Urban Tunnel Cross-Section", x: 100, y: 50 },
+  { id: "win-tbmexplorer", title: "CYBER-TWIN // TBM Subsystem Explorer", x: 80, y: 40 }
 ];
 
 const ICONS = [
@@ -77,7 +81,9 @@ const ICONS = [
   { id: "icon-cutter", open: "win-cutter", label: "Cutter AI" },
   { id: "icon-gis", open: "win-gis", label: "GIS Map" },
   { id: "icon-ar", open: "win-ar", label: "AR View" },
-  { id: "icon-voice", open: "win-voice", label: "Voice" }
+  { id: "icon-voice", open: "win-voice", label: "Voice" },
+  { id: "icon-citytunnel", open: "win-citytunnel", label: "City Twin" },
+  { id: "icon-tbmexplorer", open: "win-tbmexplorer", label: "Cyber-Twin" }
 ];
 
 const RISK_SOURCES = [
@@ -508,6 +514,30 @@ export default function App() {
                 <circle cx="24" cy="10" r="1" fill="#ff00ff" />
               </svg>
             )}
+            {ic.label === "City Twin" && (
+              <svg viewBox="0 0 32 24" width="34" height="26">
+                <rect x="2" y="8" width="28" height="14" rx="1" fill="#0a0a2a" stroke="#00f0ff" strokeWidth="1.5" />
+                <rect x="4" y="2" width="5" height="6" fill="#334455" stroke="#00f0ff" strokeWidth="0.8" />
+                <rect x="10" y="4" width="4" height="4" fill="#445566" stroke="#ff00e5" strokeWidth="0.8" />
+                <rect x="15" y="1" width="6" height="7" fill="#334455" stroke="#00f0ff" strokeWidth="0.8" />
+                <rect x="22" y="3" width="5" height="5" fill="#445566" stroke="#ff00e5" strokeWidth="0.8" />
+                <line x1="2" y1="8" x2="30" y2="8" stroke="#555" strokeWidth="1.5" />
+                <ellipse cx="16" cy="16" rx="8" ry="3" fill="none" stroke="#7c3aed" strokeWidth="1" strokeDasharray="2 1" />
+                <circle cx="16" cy="16" r="2" fill="#ff00e5" />
+                <line x1="16" y1="13" x2="16" y2="8" stroke="#00f0ff" strokeWidth="0.8" strokeDasharray="1 1" />
+              </svg>
+            )}
+            {ic.label === "Cyber-Twin" && (
+              <svg viewBox="0 0 32 24" width="34" height="26">
+                <rect x="2" y="3" width="28" height="18" rx="1" fill="#0a0a2a" stroke="#00f0ff" strokeWidth="1.5" />
+                <rect x="4" y="7" width="4" height="10" rx="1" fill="#00f0ff" opacity="0.6" stroke="#00f0ff" strokeWidth="0.8" />
+                <rect x="9" y="5" width="4" height="12" rx="1" fill="#ff00e5" opacity="0.6" stroke="#ff00e5" strokeWidth="0.8" />
+                <rect x="14" y="4" width="4" height="14" rx="1" fill="#7c3aed" opacity="0.6" stroke="#7c3aed" strokeWidth="0.8" />
+                <rect x="19" y="6" width="4" height="11" rx="1" fill="#ff8800" opacity="0.6" stroke="#ff8800" strokeWidth="0.8" />
+                <rect x="24" y="8" width="4" height="8" rx="1" fill="#ffcc00" opacity="0.6" stroke="#ffcc00" strokeWidth="0.8" />
+                <line x1="2" y1="20" x2="30" y2="20" stroke="#00f0ff" strokeWidth="0.5" strokeDasharray="2 2" />
+              </svg>
+            )}
             <span>{ic.label}</span>
           </button>
         ))}
@@ -585,6 +615,8 @@ export default function App() {
               ))}
             </div>
           )}
+          {w.id === "win-citytunnel" && <CityTunnelCrossSection onToast={toast} />}
+          {w.id === "win-tbmexplorer" && <TbmExplorer onToast={toast} />}
         </Window>
       ))}
 

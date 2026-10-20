@@ -60,7 +60,7 @@ export default function Window({
         onPointerMove={handleMove}
         onPointerUp={handleUp}
       >
-        <span className="titlebar-menu">&#9632;</span>
+        <span className="titlebar-menu">&#9670;</span>
         <span className="titlebar-text">{title}</span>
         <span className="titlebar-btns">
           <button className="tbtn" title="Minimize" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onToggleMin(id); }}>_</button>

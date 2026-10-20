@@ -1,5 +1,8 @@
 export const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-export const WS_BASE = API_BASE.replace(/^http/, "ws") || "ws://localhost:8000";
+const defaultWS = typeof window !== "undefined"
+  ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`
+  : "ws://localhost:8000";
+export const WS_BASE = API_BASE ? API_BASE.replace(/^http/, "ws") : defaultWS;
 
 let authToken = localStorage.getItem("shield_token") || null;
 

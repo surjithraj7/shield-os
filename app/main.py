@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.api.anomaly_routes import router as anomaly_router
 from app.api.assistant_routes import router as assistant_router
@@ -29,13 +28,6 @@ from app.api.pdf_routes import router as pdf_router
 from app.auth import seed_users
 from app.db import SessionLocal, init_db
 from app.seed_advanced import seed_advanced
-
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_STATIC_CANDIDATES = [
-    os.path.join(_REPO_ROOT, "frontend", "dist"),
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "static"),
-]
-STATIC_DIR = next((d for d in _STATIC_CANDIDATES if os.path.isdir(d)), _STATIC_CANDIDATES[0])
 
 
 @asynccontextmanager
@@ -103,5 +95,23 @@ def info():
     }
 
 
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_STATIC_CANDIDATES = [
+    os.path.join(_REPO_ROOT, "frontend", "dist"),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "static"),
+]
+STATIC_DIR = next((d for d in _STATIC_CANDIDATES if os.path.isdir(d)), _STATIC_CANDIDATES[0])
+
 if os.path.isdir(STATIC_DIR):
-    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    @app.get("/")
+    def serve_ui():
+        index_path = os.path.join(STATIC_DIR, "index.html")
+        if os.path.isfile(index_path):
+            return FileResponse(index_path)
+        return {"status": "ok", "message": "API backend ready"}
+
+    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

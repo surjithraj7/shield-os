@@ -21,6 +21,7 @@ tunneling.db
 
 # Logs
 logs/
+*.log
 
 # Node
 node_modules/

@@ -1,120 +1,55 @@
 /**
  * FORGE3D Innovation #5: GIS Integration
- * Map view with tunnel alignment, UTM/WGS84 coordinates, spatial context
+ * Leaflet satellite/hybrid map with tunnel alignment, UTM/WGS84 coordinates
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { ENDPOINTS, getJSON } from "../api";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-// Simple 2D map canvas renderer (no external dependencies)
-function drawMap(canvas, alignment, points) {
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width;
-  const h = canvas.height;
+const DEFAULT_CENTER = [1.3521, 103.8198];
+const DEFAULT_ZOOM = 12;
 
-  // Background
-  ctx.fillStyle = "#0a1628";
-  ctx.fillRect(0, 0, w, h);
-
-  // Grid
-  ctx.strokeStyle = "#1a2a4a";
-  ctx.lineWidth = 0.5;
-  for (let i = 0; i < w; i += 30) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i, h);
-    ctx.stroke();
-  }
-  for (let j = 0; j < h; j += 30) {
-    ctx.beginPath();
-    ctx.moveTo(0, j);
-    ctx.lineTo(w, j);
-    ctx.stroke();
-  }
-
-  if (!points || points.length === 0) return;
-
-  // Calculate bounds
-  const lats = points.map((p) => p.wgs84.lat);
-  const lons = points.map((p) => p.wgs84.lon);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLon = Math.min(...lons);
-  const maxLon = Math.max(...lons);
-
-  const latRange = maxLat - minLat || 0.01;
-  const lonRange = maxLon - minLon || 0.01;
-  const padding = 50;
-
-  function toCanvas(lat, lon) {
-    const x = padding + ((lon - minLon) / lonRange) * (w - 2 * padding);
-    const y = h - padding - ((lat - minLat) / latRange) * (h - 2 * padding);
-    return [x, y];
-  }
-
-  // Draw tunnel alignment line
-  ctx.beginPath();
-  ctx.strokeStyle = "#ff00ff";
-  ctx.lineWidth = 3;
-  points.forEach((p, i) => {
-    const [x, y] = toCanvas(p.wgs84.lat, p.wgs84.lon);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-
-  // Draw chainage markers
-  ctx.fillStyle = "#00ffff";
-  ctx.font = "10px Courier New";
-  points.forEach((p, i) => {
-    if (i % 5 === 0) {
-      const [x, y] = toCanvas(p.wgs84.lat, p.wgs84.lon);
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillText(`${p.chainage_m.toFixed(0)}m`, x + 8, y - 8);
-    }
-  });
-
-  // Draw origin point
-  const [ox, oy] = toCanvas(alignment.origin_wgs84.lat, alignment.origin_wgs84.lon);
-  ctx.beginPath();
-  ctx.arc(ox, oy, 8, 0, Math.PI * 2);
-  ctx.fillStyle = "#ff00ff";
-  ctx.fill();
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 12px Courier New";
-  ctx.fillText("ORIGIN", ox + 12, oy + 4);
-
-  // Compass rose
-  const cx = w - 40;
-  const cy = 40;
-  ctx.strokeStyle = "#ff00ff";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - 20);
-  ctx.lineTo(cx, cy + 20);
-  ctx.moveTo(cx - 20, cy);
-  ctx.lineTo(cx + 20, cy);
-  ctx.stroke();
-  ctx.fillStyle = "#ff00ff";
-  ctx.font = "bold 14px Courier New";
-  ctx.fillText("N", cx - 4, cy - 24);
-
-  // Coordinate labels
-  ctx.fillStyle = "#00ffff";
-  ctx.font = "10px Courier New";
-  ctx.fillText(`LAT: ${alignment.origin_wgs84.lat.toFixed(4)}°`, 10, h - 30);
-  ctx.fillText(`LON: ${alignment.origin_wgs84.lon.toFixed(4)}°`, 10, h - 16);
-  ctx.fillText(`UTM: ${alignment.origin_utm.zone}${alignment.origin_utm.letter} ${alignment.origin_utm.easting_m.toFixed(0)}E ${alignment.origin_utm.northing_m.toFixed(0)}N`, w - 300, h - 16);
-}
+const SATELLITE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const LABELS_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+const ATTRIBUTION = "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics";
 
 export default function GisView({ onToast }) {
-  const canvasRef = useRef(null);
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const layersRef = useRef({ markers: [], polyline: null });
   const [gisData, setGisData] = useState(null);
   const [selectedPoint, setSelectedPoint] = useState(null);
+
+  useEffect(() => {
+    if (mapInstance.current) return;
+
+    const map = L.map(mapRef.current, {
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
+      zoomControl: true,
+    });
+
+    L.tileLayer(SATELLITE_URL, {
+      attribution: ATTRIBUTION,
+      maxZoom: 19,
+    }).addTo(map);
+
+    L.tileLayer(LABELS_URL, {
+      attribution: ATTRIBUTION,
+      maxZoom: 19,
+      pane: "overlayPane",
+    }).addTo(map);
+
+    mapInstance.current = map;
+
+    setTimeout(() => map.invalidateSize(), 100);
+
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,14 +58,6 @@ export default function GisView({ onToast }) {
         const res = await getJSON("/api/gis/data");
         if (cancelled) return;
         setGisData(res);
-
-        // Draw map
-        const canvas = canvasRef.current;
-        if (canvas && res) {
-          canvas.width = canvas.clientWidth;
-          canvas.height = canvas.clientHeight;
-          drawMap(canvas, res.alignment, res.points);
-        }
       } catch (e) {
         if (onToast) onToast("GIS API OFFLINE", "err");
       }
@@ -139,32 +66,78 @@ export default function GisView({ onToast }) {
     return () => { cancelled = true; };
   }, [onToast]);
 
-  const handleCanvasClick = (e) => {
-    if (!gisData || !gisData.points) return;
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map || !gisData) return;
 
-    // Find nearest point (simplified)
-    const idx = Math.floor((x / canvas.width) * gisData.points.length);
-    if (idx >= 0 && idx < gisData.points.length) {
-      setSelectedPoint(gisData.points[idx]);
+    const { alignment, points } = gisData;
+    const { markers, polyline } = layersRef.current;
+
+    markers.forEach((m) => map.removeLayer(m));
+    if (polyline) map.removeLayer(polyline);
+    layersRef.current = { markers: [], polyline: null };
+
+    if (!points || points.length === 0) return;
+
+    const latlngs = points.map((p) => [p.wgs84.lat, p.wgs84.lon]);
+
+    const line = L.polyline(latlngs, {
+      color: "#FF00FF",
+      weight: 3,
+      opacity: 0.9,
+    }).addTo(map);
+    layersRef.current.polyline = line;
+
+    const newMarkers = [];
+
+    points
+      .filter((_, i) => i % 5 === 0)
+      .forEach((p) => {
+        const marker = L.circleMarker([p.wgs84.lat, p.wgs84.lon], {
+          radius: 4,
+          fillColor: "#00FFFF",
+          color: "#fff",
+          weight: 1,
+          fillOpacity: 1,
+        }).addTo(map);
+        marker.on("click", () => setSelectedPoint(p));
+        newMarkers.push(marker);
+      });
+
+    const originMarker = L.circleMarker(
+      [alignment.origin_wgs84.lat, alignment.origin_wgs84.lon],
+      {
+        radius: 7,
+        fillColor: "#FF00FF",
+        color: "#fff",
+        weight: 2,
+        fillOpacity: 1,
+      }
+    ).addTo(map);
+    originMarker.bindTooltip("ORIGIN", { permanent: true, direction: "right", offset: [10, 0] });
+    newMarkers.push(originMarker);
+
+    layersRef.current.markers = newMarkers;
+
+    const bounds = L.latLngBounds(latlngs);
+    bounds.extend([alignment.origin_wgs84.lat, alignment.origin_wgs84.lon]);
+    map.fitBounds(bounds, { padding: [60, 60] });
+  }, [gisData]);
+
+  const handleSelectPoint = useCallback((p) => {
+    setSelectedPoint(p);
+    const map = mapInstance.current;
+    if (map) {
+      map.setView([p.wgs84.lat, p.wgs84.lon], map.getZoom());
     }
-  };
+  }, []);
 
   return (
-    <div className="geo-layout">
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <canvas
-          ref={canvasRef}
-          onClick={handleCanvasClick}
-          style={{
-            width: "100%",
-            flex: 1,
-            cursor: "crosshair",
-            border: "1px solid #333",
-          }}
+    <div className="geo-layout" style={{ height: "500px" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
+        <div
+          ref={mapRef}
+          style={{ width: "100%", height: "100%", background: "#0a1628" }}
         />
       </div>
       <div className="twin-panel" style={{ width: "280px" }}>
@@ -228,7 +201,7 @@ export default function GisView({ onToast }) {
                   key={i}
                   className="twin-hud-row"
                   style={{ cursor: "pointer" }}
-                  onClick={() => setSelectedPoint(p)}
+                  onClick={() => handleSelectPoint(p)}
                 >
                   <span>{p.chainage_m}m</span>
                   <b>{p.wgs84.lat.toFixed(3)}°</b>

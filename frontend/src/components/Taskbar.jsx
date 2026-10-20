@@ -16,7 +16,7 @@ export default function Taskbar({ windows, onToggle, sysMsg, user, onLogout }) {
 
   return (
     <footer className="taskbar">
-      <button className="start-btn">&#9632; SHIELD-OS</button>
+      <button className="start-btn">&#9670; SHIELD-OS</button>
       <div className="taskbar-tasks">
         {openWins.map((w) => (
           <button
@@ -29,7 +29,7 @@ export default function Taskbar({ windows, onToggle, sysMsg, user, onLogout }) {
         ))}
       </div>
       <div className="taskbar-right">
-        <span>SYS: {sysMsg}</span>
+        <span className="sys-msg">SYS: {sysMsg}</span>
         {user && (
           <span className="taskbar-user">
             {user.username} [{user.role}]

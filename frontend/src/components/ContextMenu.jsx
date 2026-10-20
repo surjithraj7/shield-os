@@ -15,8 +15,8 @@ export default function ContextMenu({ onAction }) {
   useEffect(() => {
     function open(e) {
       e.preventDefault();
-      const mx = Math.min(e.clientX, window.innerWidth - 210);
-      const my = Math.min(e.clientY, window.innerHeight - 140);
+      const mx = Math.min(e.clientX, window.innerWidth - 220);
+      const my = Math.min(e.clientY, window.innerHeight - 150);
       setMenu({ x: mx, y: my });
     }
     function close() {

@@ -14,6 +14,11 @@ from app.assistant_gemini import (
 )
 from app.assistant_gpt import is_configured as gpt_configured
 from app.assistant_gpt import respond_gpt
+from app.assistant_nvidia import (
+    analyze_vision_nvidia,
+    is_configured as nvidia_configured,
+    respond_nvidia,
+)
 from app.db import get_db
 
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
@@ -22,6 +27,17 @@ router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 class ChatRequest(BaseModel):
     message: str = ""
     history: list[dict] = []
+
+
+class NvidiaVisionRequest(BaseModel):
+    prompt: str = "What is in this image?"
+    image_url: str = "https://assets.ngc.nvidia.com/products/api-catalog/phi-3-5-vision/example1b.jpg"
+    model: str = "moonshotai/kimi-k3"
+    max_tokens: int = 16384
+    stream: bool = False
+    temperature: float = 1.0
+    reasoning_effort: str = "max"
+    seed: int = 0
 
 
 class GeminiImageRequest(BaseModel):
@@ -48,17 +64,66 @@ def _require_gemini() -> None:
         )
 
 
+def _require_nvidia() -> None:
+    if not nvidia_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="NVIDIA API is not configured. Set NVIDIA_API_KEY in the .env file.",
+        )
+
+
 @router.post("/chat")
 def chat(req: ChatRequest, db: Session = Depends(get_db)):
+    if nvidia_configured():
+        try:
+            result = respond_nvidia([*req.history, {"role": "user", "text": req.message}], db)
+            if result is not None:
+                return result
+        except Exception:
+            pass
     if gpt_configured():
-        result = respond_gpt([*req.history, {"role": "user", "text": req.message}], db)
-        if result is not None:
-            return result
+        try:
+            result = respond_gpt([*req.history, {"role": "user", "text": req.message}], db)
+            if result is not None:
+                return result
+        except Exception:
+            pass
     if gemini_configured():
-        result = respond_gemini([*req.history, {"role": "user", "text": req.message}], db)
-        if result is not None:
-            return result
+        try:
+            result = respond_gemini([*req.history, {"role": "user", "text": req.message}], db)
+            if result is not None:
+                return result
+        except Exception:
+            pass
     return respond(req.message, db)
+
+
+@router.post("/nvidia/chat")
+def nvidia_chat(req: ChatRequest, db: Session = Depends(get_db)):
+    _require_nvidia()
+    result = respond_nvidia([*req.history, {"role": "user", "text": req.message}], db)
+    if result is None:
+        raise HTTPException(status_code=502, detail="NVIDIA NIM request failed.")
+    return result
+
+
+@router.post("/nvidia/vision")
+def nvidia_vision(req: NvidiaVisionRequest):
+    _require_nvidia()
+    try:
+        res = analyze_vision_nvidia(
+            prompt=req.prompt,
+            image_url=req.image_url,
+            model=req.model,
+            max_tokens=req.max_tokens,
+            stream=req.stream,
+            temperature=req.temperature,
+            reasoning_effort=req.reasoning_effort,
+            seed=req.seed,
+        )
+        return res
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"NVIDIA Vision request failed: {exc}") from exc
 
 
 @router.post("/gemini/chat")
@@ -76,7 +141,6 @@ def gemini_chat(req: ChatRequest, db: Session = Depends(get_db)):
 
 @router.post("/gemini/image")
 def gemini_image(req: GeminiImageRequest):
-    _require_gemini()
     try:
         images = generate_image(
             prompt=req.prompt,
@@ -106,3 +170,4 @@ def gemini_qa(req: GeminiQARequest):
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Question answering failed: {exc}") from exc
     return {"model": "gemini-2.5-flash", "answer": text}
+

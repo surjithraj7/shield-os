@@ -67,37 +67,30 @@ Three tables per the PRD:
 
 Interactive docs at `http://localhost:8000/docs`.
 
-## AI assistant (ChatGPT)
+## AI assistant (NVIDIA NIM / Kimi-k3 / OpenAI / Gemini)
 
-The AI ASSIST copilot is powered by real ChatGPT. It can answer questions, open
-modules, build 3D designs, run analysis and generate reports via OpenAI tool
-calling.
+The AI ASSIST copilot is powered by **NVIDIA Cloud API / NIM** (`https://integrate.api.nvidia.com/v1/chat/completions`), Moonshot AI Kimi-k3, OpenAI, or Gemini. It can answer questions, open platform modules, generate 3D designs, run data analytics, and perform multimodal Vision AI inspection of CCTV tunnel images via tool calling.
 
-To enable it, create a `.env` file in the project root (or set the environment
-variables):
+To enable NVIDIA NIM, create a `.env` file in the project root:
 
 ```bash
-OPENAI_API_KEY=sk-...            # required - your OpenAI key
-OPENAI_MODEL=gpt-4o-mini         # optional (default gpt-4o-mini)
-OPENAI_BASE_URL=                 # optional - custom OpenAI-compatible endpoint
+NVIDIA_API_KEY=nvapi-REPLACE_WITH_YOUR_KEY
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+NVIDIA_MODEL=moonshotai/kimi-k3
+TRITON_SERVER_IMAGE=nvcr.io/nvidia/tritonserver:26.07-trtllm-python-py3
 ```
 
-**BIG PICKLE (oc/big-pickle).** The copilot is wired to a local OpenAI-compatible
-relay:
+**NVIDIA Vision AI Endpoint:**
+- `POST /api/assistant/nvidia/vision`: Performs multimodal vision QA on CCTV tunnel face or cutterhead images (`prompt`, `image_url`, `model`, `max_tokens`, `temperature`, `reasoning_effort`).
 
+**OpenAI & Relay Support:**
 ```bash
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=oc/big-pickle
 OPENAI_BASE_URL=http://localhost:20128/v1
 ```
 
-The relay always streams responses, so the assistant uses the SDK streaming path
-for both chat and tool calling (navigate/design/report/analysis). If the relay is
-unreachable or errors, the assistant falls back to Gemini and then the offline
-rule-based copilot.
-
-Without a key the assistant automatically falls back to the built-in offline
-rule-based copilot, so the platform keeps working either way.
+If keys are unconfigured or endpoints are unreachable, the assistant automatically falls back to the built-in offline rule-based copilot, ensuring 100% platform availability.
 
 ## Gemini copilot (image + question + QA)
 
@@ -142,9 +135,10 @@ curl -X POST http://localhost:8000/api/assistant/gemini/qa \
 
 ```bash
 pip install -r requirements.txt
+npm --prefix frontend run build    # build the React frontend bundle
 python scripts/seed_data.py        # seed 120 rings of Beijing Line 12-style data
-python -m uvicorn app.main:app --port 8000
-python -m pytest                   # run the test suite (incl. <5% validation target)
+python -m uvicorn app.main:app --port 8000  # start server (serves API + UI on :8000)
+python -m pytest                   # run the test suite (79 tests)
 ```
 
 ## Deploying

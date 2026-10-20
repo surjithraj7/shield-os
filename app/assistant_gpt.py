@@ -226,7 +226,7 @@ def respond_gpt(history: list[dict], db: Session) -> dict | None:
         client = OpenAI(
             api_key=api_key,
             base_url=base_url or None,
-            timeout=30.0,
+            timeout=4.0,
             max_retries=1,
             default_headers=headers if headers else None,
         )

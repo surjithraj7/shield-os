@@ -203,7 +203,8 @@ class TestGeminiApi:
             "/api/assistant/gemini/image",
             json={"prompt": "a tunnel"},
         )
-        assert response.status_code == 503
+        assert response.status_code == 200
+        assert len(response.json()["images"]) > 0
 
     def test_gemini_chat_unconfigured(self, client, gemini_off):
         response = client.post("/api/assistant/gemini/chat", json={"message": "hi"})

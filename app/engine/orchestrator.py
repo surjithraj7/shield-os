@@ -21,6 +21,7 @@ class EngineConfig:
     calibration_immediate: float = 1.0
     calibration_consolidation: float = 1.0
     time_zero_shift_days: float = 0.0
+    enable_pinn: bool = True
 
 
 @dataclass
@@ -41,6 +42,28 @@ def total_settlement_trough(
 ) -> dict[str, np.ndarray]:
     if y is None:
         y = np.linspace(-40.0, 40.0, 201)
+
+    if engine.enable_pinn:
+        try:
+            from app.engine.pinn_surrogate import global_pinn_engine, CircuitBreakerOpenException
+            pinn_res = global_pinn_engine.predict_trough(
+                station=station,
+                t_days=t_days,
+                shield=shield,
+                soil=soil,
+                consolidation=consolidation,
+                calibration_immediate=engine.calibration_immediate,
+                calibration_consolidation=engine.calibration_consolidation,
+                y=y,
+            )
+            return pinn_res
+        except Exception as exc:
+            import logging
+            logging.getLogger("app.engine.orchestrator").warning(
+                f"PINN acceleration engine bypassed ({exc}). Fall-through to Scipy analytical solver."
+            )
+
+    # Scipy Analytical Solver Fallback Path
     immediate = immediate_settlement_trough(
         np.array([station]), y, shield, soil, engine.calibration_immediate
     )["total"][0]
@@ -52,6 +75,10 @@ def total_settlement_trough(
         "immediate_mm": immediate * 1000.0,
         "consolidation_mm": long_term * 1000.0,
         "total_mm": (immediate + long_term) * 1000.0,
+        "engine_mode": "SCIPY_ANALYTICAL",
+        "inference_time_ms": 0.0,
+        "confidence_interval_95_pct": 1.0,
+        "circuit_state": "CLOSED",
     }
 
 
