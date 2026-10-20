@@ -2,8 +2,9 @@
 
 **Last updated:** 2026-10-20  
 **Target:** Render Web Service running the repository Dockerfile  
-**Status:** configuration prepared and locally smoke-tested; **not deployed** because
-this environment has no Render account credentials or Render CLI.
+**Status:** configuration prepared, committed, and pushed to the private
+`surjithraj7/shield-os` repository; **not deployed** because this environment has
+no Render account credentials or Render CLI.
 
 ## 1. Deployment decision
 
@@ -73,23 +74,20 @@ HTTP 503 when the database is unavailable.
 
 ## 4. Exact deployment steps
 
-### 4.1 Commit and push the prepared changes
+### 4.1 Repository status
 
-The current working tree contains uncommitted deployment hardening. Review and
-push it before creating the Render Blueprint:
+The deployment changes are committed on `master` as `14a39fc` and pushed to the
+private repository `surjithraj7/shield-os`. For future changes, review the diff,
+commit, and push before expecting Render to auto-deploy:
 
 ```powershell
 git status
 git diff
-git add Dockerfile render.yaml .env.example README.md RENDER_DEPLOYMENT.md `
-  app/config.py app/auth.py app/db.py app/main.py app/assistant.py `
-  app/api/assistant_routes.py tests/test_deployment.py `
-  PROJECT_STATUS.md FEATURE_INVENTORY.md IMPLEMENTATION_ROADMAP.md TEST_REPORT.md
-git commit -m "Harden production deployment configuration"
 git push origin master
 ```
 
-Never add `.env`, database files, or secrets to the commit.
+Never add `.env`, database files, or secrets to a commit. Render must be granted
+access to this **private** repository through its GitHub App before it can build.
 
 ### 4.2 Create the Render Blueprint
 
@@ -177,6 +175,7 @@ python -c "import sqlite3; s=sqlite3.connect('/data/tunneling.db'); d=sqlite3.co
 | Check | Status |
 | --- | --- |
 | `render.yaml` validated against Render's JSON schema; paid Docker plan, `/data` disk, health check | Passed locally |
+| Private GitHub repository created, committed, and pushed | `surjithraj7/shield-os` |
 | Dockerfile inspected for multi-stage build, build args, port, and start command | Verified locally |
 | Production startup with a fresh SQLite database | Passed locally |
 | Production health endpoint with database check | Passed locally |
