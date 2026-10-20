@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-10-20  
 **Target:** Render Web Service running the repository Dockerfile  
-**Status:** configuration prepared, committed, and pushed to the private
+**Status:** configuration prepared, committed, and pushed to the public
 `surjithraj7/shield-os` repository; **not deployed** because this environment has
 no Render account credentials or Render CLI.
 
@@ -76,8 +76,8 @@ HTTP 503 when the database is unavailable.
 
 ### 4.1 Repository status
 
-The deployment changes are committed on `master` as `14a39fc` and pushed to the
-private repository `surjithraj7/shield-os`. For future changes, review the diff,
+The deployment changes are committed on `master` and pushed to the public
+repository `surjithraj7/shield-os`. For future changes, review the diff,
 commit, and push before expecting Render to auto-deploy:
 
 ```powershell
@@ -86,8 +86,9 @@ git diff
 git push origin master
 ```
 
-Never add `.env`, database files, or secrets to a commit. Render must be granted
-access to this **private** repository through its GitHub App before it can build.
+Never add `.env`, database files, or secrets to a commit. This repository is
+public; all committed code is visible. Render still needs GitHub app access to
+connect the repository and receive deploy webhooks.
 
 ### 4.2 Create the Render Blueprint
 
@@ -175,7 +176,7 @@ python -c "import sqlite3; s=sqlite3.connect('/data/tunneling.db'); d=sqlite3.co
 | Check | Status |
 | --- | --- |
 | `render.yaml` validated against Render's JSON schema; paid Docker plan, `/data` disk, health check | Passed locally |
-| Private GitHub repository created, committed, and pushed | `surjithraj7/shield-os` |
+| Public GitHub repository created, committed, and pushed | `surjithraj7/shield-os` |
 | Dockerfile inspected for multi-stage build, build args, port, and start command | Verified locally |
 | Production startup with a fresh SQLite database | Passed locally |
 | Production health endpoint with database check | Passed locally |
