@@ -31,11 +31,12 @@ import AROverlay from "./components/AROverlay";
 import VoiceCommand from "./components/VoiceCommand";
 import CityTunnelCrossSection from "./components/CityTunnelCrossSection";
 import TbmExplorer from "./components/TbmExplorer";
+import IotMonitor from "./components/IotMonitor";
 
 const INITIAL_WINDOWS = [
   { id: "win-sensor", title: "SENSOR // Real-Time Cutterhead Metrics", x: 24, y: 60 },
   { id: "win-camera", title: "CAMERA // CCTV: Tunnel Face (AR)", x: 500, y: 130 },
-  { id: "win-alerts", title: "ALERTS // Active Risk Sources", x: 960, y: 60 },
+  { id: "win-alerts", title: "ALERTS // Persisted Incident Log", x: 960, y: 60 },
   { id: "win-controls", title: "CONTROLS // Parameter Controls", x: 24, y: 340 },
   { id: "win-settlement", title: "SETTLEMENT // Predicted vs Monitored", x: 500, y: 340 },
   { id: "win-twin", title: "TWIN // Digital Cyber Twin 3D", x: 60, y: 120 },
@@ -57,7 +58,8 @@ const INITIAL_WINDOWS = [
   { id: "win-voice", title: "VOICE // Voice Command Interface", x: 280, y: 180 },
   { id: "search-results", title: "SEARCH // Query Results", x: 300, y: 160 },
   { id: "win-citytunnel", title: "CITY-TWIN // Urban Tunnel Cross-Section", x: 100, y: 50 },
-  { id: "win-tbmexplorer", title: "CYBER-TWIN // TBM Subsystem Explorer", x: 80, y: 40 }
+  { id: "win-tbmexplorer", title: "CYBER-TWIN // TBM Subsystem Explorer", x: 80, y: 40 },
+  { id: "win-iot", title: "IoT // Sensor Network & Alert Center", x: 120, y: 70 }
 ];
 
 const ICONS = [
@@ -83,14 +85,8 @@ const ICONS = [
   { id: "icon-ar", open: "win-ar", label: "AR View" },
   { id: "icon-voice", open: "win-voice", label: "Voice" },
   { id: "icon-citytunnel", open: "win-citytunnel", label: "City Twin" },
-  { id: "icon-tbmexplorer", open: "win-tbmexplorer", label: "Cyber-Twin" }
-];
-
-const RISK_SOURCES = [
-  { time: "--:--", sev: "safe", desc: "Building B-01 foundation, clearance check OK" },
-  { time: "--:--", sev: "notice", desc: "Sewer DN800 pipe, clearance 2.186 m (verify)" },
-  { time: "--:--", sev: "warning", desc: "Water main DN1200 20 m ahead of face" },
-  { time: "--:--", sev: "critical", desc: "Adjacent operating metro tunnel, L-line" }
+  { id: "icon-tbmexplorer", open: "win-tbmexplorer", label: "Cyber-Twin" },
+  { id: "icon-iot", open: "win-iot", label: "IoT Alerts" }
 ];
 
 let toastSeq = 0;
@@ -110,33 +106,6 @@ export default function App() {
   const [auth, setAuth] = useState(null);
 
   const [metrics, setMetrics] = useState({});
-  const [xrayAlerts, setXrayAlerts] = useState([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function poll() {
-      try {
-        const res = await getJSON(ENDPOINTS.xraySummary);
-        if (cancelled) return;
-        const alerts = res.results
-          .filter((r) => r.level !== "safe")
-          .map((r) => ({
-            time: "--:--",
-            sev: r.level,
-            desc: `X-RAY ${r.name}: ${r.settlement_mm}mm settle / ${r.strain_ue}ue strain`
-          }));
-        setXrayAlerts(alerts);
-      } catch (e) {
-        /* API offline - ignore */
-      }
-    }
-    poll();
-    const id = setInterval(poll, 12000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("shield_token");
@@ -538,6 +507,16 @@ export default function App() {
                 <line x1="2" y1="20" x2="30" y2="20" stroke="#00f0ff" strokeWidth="0.5" strokeDasharray="2 2" />
               </svg>
             )}
+            {ic.label === "IoT Alerts" && (
+              <svg viewBox="0 0 32 24" width="34" height="26">
+                <rect x="2" y="3" width="28" height="18" rx="1" fill="#0a0a2a" stroke="#00ff88" strokeWidth="1.5" />
+                <circle cx="8" cy="12" r="2.2" fill="#00ff88" />
+                <circle cx="16" cy="8" r="2.2" fill="#00ffff" />
+                <circle cx="24" cy="15" r="2.2" fill="#ff00ff" />
+                <path d="M8 12 L16 8 L24 15" fill="none" stroke="#00ff88" strokeWidth="1" strokeDasharray="2 1" />
+                <circle cx="16" cy="12" r="1.3" fill="#ffff00" />
+              </svg>
+            )}
             <span>{ic.label}</span>
           </button>
         ))}
@@ -566,11 +545,7 @@ export default function App() {
           )}
           {w.id === "win-camera" && <CctvFeed />}
           {w.id === "win-alerts" && (
-            <AlertsLog
-              calculated={data.calculated}
-              thresholds={thresholds}
-              sources={[...RISK_SOURCES, ...xrayAlerts]}
-            />
+            <AlertsLog auth={auth} onToast={toast} />
           )}
           {w.id === "win-controls" && <Controls shield={data.shield} onToast={toast} />}
           {w.id === "win-settlement" && <SettlementChart calculated={data.calculated} />}
@@ -617,6 +592,7 @@ export default function App() {
           )}
           {w.id === "win-citytunnel" && <CityTunnelCrossSection onToast={toast} />}
           {w.id === "win-tbmexplorer" && <TbmExplorer onToast={toast} />}
+          {w.id === "win-iot" && <IotMonitor auth={auth} onToast={toast} />}
         </Window>
       ))}
 

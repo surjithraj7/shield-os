@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -20,19 +20,32 @@ from app.assistant_nvidia import (
     respond_nvidia,
 )
 from app.db import get_db
+from app.security import enforce_rate_limit
 
-router = APIRouter(prefix="/api/assistant", tags=["assistant"])
+
+def _assistant_rate_limit(request: Request) -> None:
+    enforce_rate_limit(request, "assistant", limit=30, window_s=60.0)
+
+
+router = APIRouter(
+    prefix="/api/assistant",
+    tags=["assistant"],
+    dependencies=[Depends(_assistant_rate_limit)],
+)
 
 
 class ChatRequest(BaseModel):
-    message: str = ""
-    history: list[dict] = []
+    message: str = Field(default="", max_length=4000)
+    history: list[dict] = Field(default_factory=list, max_length=50)
 
 
 class NvidiaVisionRequest(BaseModel):
-    prompt: str = "What is in this image?"
-    image_url: str = "https://assets.ngc.nvidia.com/products/api-catalog/phi-3-5-vision/example1b.jpg"
-    model: str = "moonshotai/kimi-k3"
+    prompt: str = Field(default="What is in this image?", max_length=4000)
+    image_url: str = Field(
+        default="https://assets.ngc.nvidia.com/products/api-catalog/phi-3-5-vision/example1b.jpg",
+        max_length=2048,
+    )
+    model: str = Field(default="moonshotai/kimi-k3", max_length=128)
     max_tokens: int = 16384
     stream: bool = False
     temperature: float = 1.0
@@ -41,19 +54,19 @@ class NvidiaVisionRequest(BaseModel):
 
 
 class GeminiImageRequest(BaseModel):
-    prompt: str
+    prompt: str = Field(..., max_length=4000)
     number_of_images: int = Field(default=1, ge=1, le=4)
     aspect_ratio: str = Field(default="1:1", pattern="^(1:1|3:4|4:3|9:16|16:9)$")
 
 
 class GeminiQuestionsRequest(BaseModel):
-    prompt: str
-    image_base64: str | None = None
+    prompt: str = Field(..., max_length=4000)
+    image_base64: str | None = Field(default=None, max_length=14_000_000)
 
 
 class GeminiQARequest(BaseModel):
-    prompt: str
-    image_base64: str | None = None
+    prompt: str = Field(..., max_length=4000)
+    image_base64: str | None = Field(default=None, max_length=14_000_000)
 
 
 def _require_gemini() -> None:

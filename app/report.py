@@ -4,7 +4,17 @@ from datetime import datetime, timezone
 
 from app.api.anomaly_routes import _series
 from app.ml.anomaly import scan_series
-from app.models import CalculatedResult, MonitoringData, ShmReading, ShieldParameter, SpatialAsset
+from app.models import (
+    Alert,
+    CalculatedResult,
+    IotSensor,
+    MonitoringData,
+    RiskAssessment,
+    SensorReading,
+    ShmReading,
+    ShieldParameter,
+    SpatialAsset,
+)
 from app.spatial import evaluate_clearances
 
 SEVERITY_COLOR = {"low": "#00cc66", "notice": "#ff8800", "warning": "#ffff00", "high": "#ff2d6f"}
@@ -31,6 +41,10 @@ def build_regulatory_report(db, start_x: float = 100.0, end_x: float = 244.0) ->
     calc_rows = db.query(CalculatedResult).order_by(CalculatedResult.ring_no.asc()).all()
     shm_rows = db.query(ShmReading).order_by(ShmReading.timestamp.desc()).limit(300).all()
     assets = db.query(SpatialAsset).all()
+    iot_sensors = db.query(IotSensor).order_by(IotSensor.sensor_id.asc()).all()
+    iot_readings = db.query(SensorReading).order_by(SensorReading.measured_at.desc()).limit(200).all()
+    risk_rows = db.query(RiskAssessment).order_by(RiskAssessment.created_at.desc()).limit(100).all()
+    alert_rows = db.query(Alert).order_by(Alert.created_at.desc()).limit(100).all()
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
@@ -50,6 +64,10 @@ def build_regulatory_report(db, start_x: float = 100.0, end_x: float = 244.0) ->
     }.items():
         scan = scan_series(_series(db, kind, attr))
         anomalies[name] = scan["flagged_count"]
+
+    simulated_readings = sum(1 for r in iot_readings if r.source == "simulated")
+    active_alerts = [a for a in alert_rows if a.status != "resolved"]
+    critical_alerts = sum(1 for a in alert_rows if a.severity == "CRITICAL")
 
     clearance = evaluate_clearances(
         [
@@ -97,9 +115,54 @@ def build_regulatory_report(db, start_x: float = 100.0, end_x: float = 244.0) ->
         ],
     )
 
+    iot_table = _table(
+        ["Sensor", "Type", "Unit", "Source", "Registered"],
+        [
+            [s.sensor_id, s.sensor_type, s.unit, s.source, s.created_at.isoformat()]
+            for s in iot_sensors[:30]
+        ],
+    )
+
+    risk_table = _table(
+        ["Time", "Sensor", "Score", "Level", "Action", "Evidence"],
+        [
+            [r.created_at.isoformat(), r.sensor_id or "-", round(r.risk_score, 1),
+             r.risk_category, r.recommendation, r.trigger]
+            for r in risk_rows[:20]
+        ],
+    )
+
+    alert_table = _table(
+        ["Time", "Severity", "Title", "Status", "Sensor", "Occurrences"],
+        [
+            [a.created_at.isoformat(), a.severity, a.title, a.status,
+             a.sensor_id or "-", a.occurrence_count]
+            for a in alert_rows[:20]
+        ],
+    )
+
     worst_risk = max(calc_rows, key=lambda r: {"low": 0, "notice": 1, "warning": 2, "high": 3}.get(r.risk_level, 0)) if calc_rows else None
 
+    if worst_risk is not None:
+        settlement_cards = f"""<div class="grid">
+    <div class="card"><b>{worst_risk.predicted_value_mm:.2f} mm</b><span>Worst-Risk Predicted</span></div>
+    <div class="card"><b>{worst_risk.monitored_value_mm:.2f} mm</b><span>Worst-Risk Monitored</span></div>
+    <div class="card"><b>{worst_risk.relative_error_pct:.2f}%</b><span>Relative Error (&lt;5% target)</span></div>
+    <div class="card"><b>{'PASS' if worst_risk.relative_error_pct < 5.0 else 'FAIL'}</b><span>5% Threshold</span></div>
+  </div>"""
+    else:
+        settlement_cards = "<p class='muted'>No calculated settlement results are available.</p>"
+
     total_err = sum(r.relative_error_pct for r in calc_rows) / len(calc_rows) if calc_rows else 0.0
+    if calc_rows:
+        validation_sentence = (
+            "Settlement predictions were validated against monitored ground movement with a mean "
+            f"relative error of <b>{total_err:.2f}%</b> (target &lt; 5%) on the available dataset."
+        )
+    else:
+        validation_sentence = (
+            "No calculated settlement results were available for validation in this reporting window."
+        )
 
     def bar(label, value):
         return (
@@ -114,7 +177,7 @@ def build_regulatory_report(db, start_x: float = 100.0, end_x: float = 244.0) ->
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<title>Regulatory Compliance Report - Intelligent Tunneling Management Platform</title>
+<title>Engineering Monitoring Report - Intelligent Tunneling Management Platform</title>
 <style>
   body {{ font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; margin: 0; padding: 32px; background: #f4f4f8; }}
   h1 {{ margin: 0; font-size: 22px; }}
@@ -140,7 +203,7 @@ def build_regulatory_report(db, start_x: float = 100.0, end_x: float = 244.0) ->
 </head>
 <body>
   <div class="head">
-    <h1>Regulatory Compliance Report</h1>
+    <h1>Engineering Monitoring Report</h1>
     <div>Intelligent Tunneling Management Platform - Digital Twin Settlement &amp; SHM System</div>
     <div class="meta">Generated {now} &nbsp;|&nbsp; {_html_escape(shield_rows[0].line if shield_rows else 'Beijing Metro Line 12')} &nbsp;|&nbsp; {_html_escape(shield_rows[0].section if shield_rows else 'TBM-left-line')}</div>
   </div>
@@ -153,15 +216,12 @@ def build_regulatory_report(db, start_x: float = 100.0, end_x: float = 244.0) ->
     <div class="card"><b>{total_err:.2f}%</b><span>Mean Relative Error</span></div>
     <div class="card"><b>{clearance['critical_count']}</b><span>Critical Clearances</span></div>
     <div class="card"><b>{sum(anomalies.values())}</b><span>ML Anomalies</span></div>
+    <div class="card"><b>{len(iot_sensors)}</b><span>IoT Sensors Registered</span></div>
+    <div class="card"><b>{len(active_alerts)}</b><span>Active Alerts</span></div>
   </div>
 
   <h2>2. Settlement Validation</h2>
-  <div class="grid">
-    <div class="card"><b>{worst_risk.predicted_value_mm:.2f} mm</b><span>Latest Predicted</span></div>
-    <div class="card"><b>{worst_risk.monitored_value_mm:.2f} mm</b><span>Latest Monitored</span></div>
-    <div class="card"><b>{worst_risk.relative_error_pct:.2f}%</b><span>Relative Error (&lt;5% target)</span></div>
-    <div class="card"><b>{'PASS' if worst_risk.relative_error_pct < 5.0 else 'FAIL'}</b><span>5% Threshold</span></div>
-  </div>
+  {settlement_cards}
   {recent_table}
 
   <h2>3. Alarm Distribution</h2>
@@ -186,15 +246,33 @@ def build_regulatory_report(db, start_x: float = 100.0, end_x: float = 244.0) ->
   <h2>6. ML Anomaly Scan</h2>
   {''.join(f"<div class='bar-row'><span class='bar-label'>{name}</span><span class='bar-track'><span class='bar-fill' style='width:{min(100, (count / max(1, max(anomalies.values()))) * 100):.1f}%'></span></span><span class='bar-val'>{count}</span></div>" for name, count in anomalies.items())}
 
-  <h2>7. Compliance Declaration</h2>
-  <p>This report certifies that settlement predictions are validated against monitored ground
-  movement with a mean relative error of <b>{total_err:.2f}%</b> (target &lt; 5%), in line with the
-  Beijing Metro Line 12 benchmark (predicted 4.2 mm vs monitored 4.4 mm). Alarm thresholds,
-  structural health monitoring, spatial clearance envelopes and ML anomaly screening comply with
-  the configured project control limits.</p>
+  <h2>7. IoT Risk Engine and Alert Lifecycle</h2>
+  <div class="grid">
+    <div class="card"><b>{len(iot_sensors)}</b><span>Registered Sensors</span></div>
+    <div class="card"><b>{len(iot_readings)}</b><span>Recent Readings</span></div>
+    <div class="card"><b>{simulated_readings}</b><span>Simulated Readings (Labelled)</span></div>
+    <div class="card"><b>{len(risk_rows)}</b><span>Recent Risk Assessments</span></div>
+    <div class="card"><b>{len(active_alerts)}</b><span>Active Alerts</span></div>
+    <div class="card"><b>{critical_alerts}</b><span>Critical Alerts in Record</span></div>
+  </div>
+  <p class="muted">Simulated values are explicitly tagged with source "simulated" and must not be
+  interpreted as field measurements.</p>
+  <h3>Sensor Registry</h3>
+  {iot_table}
+  <h3>Risk Assessments</h3>
+  {risk_table}
+  <h3>Alert Records</h3>
+  {alert_table}
+
+  <h2>8. Compliance Declaration</h2>
+  <p>{validation_sentence} The Beijing Metro Line 12 reference case (predicted 4.2 mm vs
+  monitored 4.4 mm) is a benchmark, not a guarantee for other sites. Alarm thresholds,
+  structural health monitoring, spatial clearance envelopes, IoT risk scores and ML anomaly
+  screening are engineering decision-support outputs. They do not constitute a statutory
+  certification and require review by a qualified tunnel engineer before field action.</p>
 
   <div class="foot">
-    SHIELD-OS Digital Twin &nbsp;|&nbsp; Auto-Regulatory Reporting Engine &nbsp;|&nbsp; Signed: TunnelArchitect-AI &nbsp;|&nbsp; {now}
+    SHIELD-OS Digital Twin &nbsp;|&nbsp; Engineering Reporting Engine &nbsp;|&nbsp; Generated {now}
   </div>
 </body>
 </html>"""

@@ -275,8 +275,9 @@ def _guide(request_text: str) -> tuple[str, list[str]]:
         )
     if any(k in text for k in ["login", "password", "log in", "user", "account"]):
         return (
-            "AUTHENTICATION:\nAccounts: admin/admin123 (full access) and operator/shield123.\n"
-            "GUEST MODE is a read-only simulation for exploring the UI without login.",
+            "AUTHENTICATION:\nUse the account issued by your platform administrator. "
+            "Credentials are not displayed here. GUEST MODE is a read-only simulation "
+            "for exploring the UI without login.",
             [],
         )
     if any(k in text for k in ["what is", "what can", "about", "software", "platform"]):

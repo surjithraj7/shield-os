@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.api.anomaly_routes import router as anomaly_router
+from app.api.iot_routes import router as iot_router
+from app.api.risk_routes import router as risk_router
 from app.api.assistant_routes import router as assistant_router
 from app.api.auth_routes import router as auth_router
 from app.api.autodrive_routes import router as autodrive_router
@@ -26,8 +32,12 @@ from app.api.cutter_routes import router as cutter_router
 from app.api.gis_routes import router as gis_router
 from app.api.pdf_routes import router as pdf_router
 from app.auth import seed_users
-from app.db import SessionLocal, init_db
+from app.config import env_bool, environment, is_production, render_external_url
+from app.db import SessionLocal, get_db, init_db
+from app.iot.service import seed_demo_iot
 from app.seed_advanced import seed_advanced
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -36,7 +46,17 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_users(db)
-        seed_advanced(db)
+        if env_bool("SHIELD_SEED_DEMO", default=not is_production()):
+            try:
+                seed_advanced(db)
+                seed_demo_iot(db)
+            except Exception:
+                db.rollback()
+                logger.exception("Optional demo seeding failed; starting with existing data")
+        logger.info("Startup complete (environment=%s, demo_seed=%s)", environment(), env_bool("SHIELD_SEED_DEMO", default=not is_production()))
+    except Exception:
+        logger.exception("Startup failed; refusing to serve an uninitialized application")
+        raise
     finally:
         db.close()
     yield
@@ -53,12 +73,47 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_default_origins = (
+    ""
+    if is_production()
+    else (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost:8000,http://127.0.0.1:8000"
+    )
+)
+_cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", _default_origins).split(",")
+    if origin.strip()
+]
+for _public_url in (render_external_url(), (os.environ.get("PUBLIC_APP_URL") or "").strip().rstrip("/")):
+    if _public_url and _public_url not in _cors_origins:
+        _cors_origins.append(_public_url)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+    expose_headers=["X-Request-ID"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    try:
+        response = await call_next(request)
+    except Exception:
+        # Log server-side, but never leak tracebacks or secrets to the client.
+        logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
+        )
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    return response
+
 
 app.include_router(router)
 app.include_router(auth_router)
@@ -79,11 +134,27 @@ app.include_router(geology_router)
 app.include_router(cutter_router)
 app.include_router(gis_router)
 app.include_router(pdf_router)
+app.include_router(iot_router)
+app.include_router(risk_router)
 
 
 @app.get("/api/health")
-def health():
-    return {"status": "ok", "engine": "ready"}
+def health(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("Database health check failed")
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "database": "unavailable", "engine": "ready"},
+        )
+    return {
+        "status": "ok",
+        "database": "ok",
+        "engine": "ready",
+        "environment": environment(),
+        "demo_seed": env_bool("SHIELD_SEED_DEMO", default=not is_production()),
+    }
 
 
 @app.get("/api/info")

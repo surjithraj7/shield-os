@@ -1,26 +1,53 @@
 services:
   - type: web
-    name: tunneling-platform
+    name: shield-os
     runtime: docker
-    repo: https://github.com/surjithraj7/SHEILD_INTELLEGENCE_TUNNELING_MANAGEMENT_.git
-    plan: free
+    repo: https://github.com/surjithraj7/shield-os.git
+    branch: master
+    plan: 1c-2g
+    numInstances: 1
     dockerContext: .
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
+    autoDeployTrigger: commit
     envVars:
-      - key: PORT
-        value: 10000
+      - key: SHIELD_ENV
+        value: production
+      # Seeded demo telemetry is explicitly labelled source="simulated".
+      # Set to false for an empty production dataset.
+      - key: SHIELD_SEED_DEMO
+        value: "true"
       - key: TUNNEL_DB_URL
         value: sqlite:////data/tunneling.db
+      - key: SHIELD_ADMIN_USERNAME
+        value: admin
+      - key: SHIELD_ADMIN_PASSWORD
+        sync: false
+      - key: SHIELD_OPERATOR_USERNAME
+        value: operator
+      - key: SHIELD_OPERATOR_PASSWORD
+        sync: false
+      - key: IOT_INGEST_API_KEY
+        generateValue: true
+      - key: VITE_GOOGLE_MAPS_API_KEY
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_BASE_URL
         sync: false
       - key: OPENAI_MODEL
         sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: NVIDIA_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      - key: NVIDIA_MODEL
+        value: moonshotai/kimi-k3
       - key: GEMINI_API_KEY
         sync: false
     disk:
-      name: data
+      name: shield-data
       mountPath: /data
       sizeGB: 1

@@ -4,11 +4,12 @@ import hashlib
 import hmac
 import os
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 
+from app.config import is_production
 from app.db import get_db
 from app.models import AuthSession, User
 
@@ -17,7 +18,7 @@ _PBKDF2_ITERATIONS = 120_000
 
 
 def utcnow() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def hash_password(password: str, salt: bytes | None = None) -> str:
@@ -84,28 +85,56 @@ def require_user(user: User | None = Depends(get_current_user)) -> User:
 
 
 def seed_users(db: Session) -> None:
+    """Create the initial accounts without shipping production credentials.
+
+    Development and test environments keep convenient demo defaults. Production
+    deployments must provide ``SHIELD_ADMIN_PASSWORD``; otherwise startup fails
+    rather than silently creating a known-password administrator.
+    """
     if db.query(User).count() > 0:
         return
-    db.add_all(
-        [
+
+    production = is_production()
+    admin_username = (os.environ.get("SHIELD_ADMIN_USERNAME") or "admin").strip()[:64]
+    admin_password = (os.environ.get("SHIELD_ADMIN_PASSWORD") or "").strip()
+    operator_username = (os.environ.get("SHIELD_OPERATOR_USERNAME") or "operator").strip()[:64]
+    operator_password = (os.environ.get("SHIELD_OPERATOR_PASSWORD") or "").strip()
+
+    if not admin_password:
+        if production:
+            raise RuntimeError(
+                "SHIELD_ADMIN_PASSWORD is required for the first production startup. "
+                "Set it as a secret environment variable and redeploy."
+            )
+        admin_password = "admin123"
+
+    if production and len(admin_password) < 12:
+        raise RuntimeError("SHIELD_ADMIN_PASSWORD must be at least 12 characters in production")
+
+    accounts = [
+        User(
+            username=admin_username,
+            password_hash=hash_password(admin_password),
+            role="admin",
+            full_name="System Administrator",
+        )
+    ]
+
+    if not operator_password and not production:
+        operator_password = "shield123"
+    if operator_password:
+        if production and len(operator_password) < 12:
+            raise RuntimeError("SHIELD_OPERATOR_PASSWORD must be at least 12 characters in production")
+        if operator_username == admin_username:
+            raise RuntimeError("SHIELD_OPERATOR_USERNAME must differ from SHIELD_ADMIN_USERNAME")
+        accounts.append(
             User(
-                username="admin",
-                password_hash=hash_password("admin123"),
-                role="admin",
-                full_name="System Administrator",
-            ),
-            User(
-                username="surjith",
-                password_hash=hash_password("surjith777"),
-                role="admin",
-                full_name="System Administrator",
-            ),
-            User(
-                username="operator",
-                password_hash=hash_password("shield123"),
+                username=operator_username,
+                password_hash=hash_password(operator_password),
                 role="operator",
                 full_name="Site Operator",
-            ),
-        ]
-    )
+            )
+        )
+
+    db.add_all(accounts)
     db.commit()

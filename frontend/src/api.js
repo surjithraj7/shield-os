@@ -143,5 +143,13 @@ export const ENDPOINTS = {
   ringeyeReadings: "/api/ringeye/readings",
   ringeyeSummary: "/api/ringeye/summary",
   xrayMap: "/api/xray/map",
-  xraySummary: "/api/xray/summary"
+  xraySummary: "/api/xray/summary",
+  iotSensors: "/api/iot/sensors",
+  iotHealth: "/api/iot/health",
+  iotReadings: "/api/iot/readings",
+  iotSimulate: "/api/iot/simulate",
+  iotTypes: "/api/iot/types",
+  alerts: "/api/alerts",
+  alertsSummary: "/api/alerts/summary",
+  riskAssessments: "/api/risk/assessments"
 };

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth import create_session, get_current_user, revoke_session, verify_password
 from app.db import get_db
 from app.models import User
+from app.security import enforce_rate_limit
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -30,7 +31,8 @@ class UserOut(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    enforce_rate_limit(request, "auth-login", limit=20, window_s=60.0)
     user = db.query(User).filter(User.username == req.username).first()
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
